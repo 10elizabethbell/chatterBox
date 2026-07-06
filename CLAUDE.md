@@ -13,6 +13,7 @@ uv venv --python 3.12 && uv pip install -e .   # setup (first run downloads ~1.2
 
 .venv/bin/whisperflow          # run the menu-bar app
 .venv/bin/whisperflow --raw    # without the Claude cleanup pass
+open build/WhisperFlow.app     # same app via the .app wrapper (LaunchServices)
 ```
 
 There is no test suite or linter. Each pipeline stage has a CLI test helper that runs without the menu bar or mic:
@@ -26,7 +27,11 @@ There is no test suite or linter. Each pipeline stage has a CLI test helper that
 say -o /tmp/t.aiff "testing one two three" && afconvert -f WAVE -d LEI16@16000 -c 1 /tmp/t.aiff /tmp/t.wav
 ```
 
-The hosting terminal needs Microphone and Accessibility permissions (System Settings → Privacy & Security). Without Accessibility, synthetic keystrokes are silently dropped — injection "does nothing" with no error.
+The hosting terminal needs Microphone and Accessibility permissions (System Settings → Privacy & Security). Without Accessibility, synthetic keystrokes are silently dropped — injection "does nothing" with no error. When launched via `build/WhisperFlow.app` instead, both permissions attach to WhisperFlow.app rather than the terminal and must be granted separately.
+
+### The .app wrapper
+
+`build/WhisperFlow.app` is a thin wrapper — a zsh launcher (`Contents/MacOS/WhisperFlow`) that resolves the project root relative to itself and execs `.venv/bin/whisperflow`. It exists so the sibling ApplicationManager project (which discovers `*.app` bundles under `menuBarApps/`) can list, launch, and quit this app; it matches by the `com.whisperflow.app` bundle ID, which survives the exec. The `MenuBarSymbolName` key in its Info.plist is what ApplicationManager reads for the list icon. The wrapper breaks if the venv is missing or the bundle is moved out of the project (it shows an alert instead of failing silently).
 
 ## Architecture
 

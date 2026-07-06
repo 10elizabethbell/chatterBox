@@ -1,0 +1,14 @@
+#!/bin/zsh
+# Thin launcher: the real app is the Python package in the project root.
+# Bundle lives at <project>/build/WhisperFlow.app, so the project root is
+# four directories up from this script.
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROJECT_ROOT="${SCRIPT_DIR:h:h:h:h}"
+WHISPERFLOW="$PROJECT_ROOT/.venv/bin/whisperflow"
+
+if [[ ! -x "$WHISPERFLOW" ]]; then
+  osascript -e 'display alert "WhisperFlow" message "No virtualenv found. Run: uv venv --python 3.12 && uv pip install -e . in the whisperFlow project." as critical'
+  exit 1
+fi
+
+exec "$WHISPERFLOW"
