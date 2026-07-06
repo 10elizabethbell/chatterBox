@@ -4,10 +4,10 @@ Local Wispr Flow clone for macOS: hold a key, speak, release — text appears.
 On-device transcription via NVIDIA Parakeet TDT v3 (MLX, runs on Apple Silicon),
 with a Claude Haiku cleanup pass planned (milestone 3).
 
-## Status: milestone 1
+## Status: milestone 2
 
 - [x] Hold-key push-to-talk → mic capture (with 500ms pre-roll) → Parakeet transcript printed to terminal
-- [ ] Milestone 2: insert text into the focused app (clipboard + Cmd-V)
+- [x] Milestone 2: insert text into the focused app (clipboard + Cmd-V, clipboard restored after)
 - [ ] Milestone 3: Claude Haiku cleanup pass (filler removal, formatting, personal dictionary, per-app tone)
 - [ ] Milestone 4: skip-short-utterance rule, secure-input detection, menu-bar UI
 
@@ -23,8 +23,14 @@ First run downloads the ~1.2GB Parakeet model from HuggingFace.
 ## Usage
 
 ```sh
-# push-to-talk: hold RIGHT OPTION, speak, release
+# push-to-talk: hold RIGHT OPTION, speak, release -> text pastes at the cursor
 .venv/bin/whisperflow
+
+# same, but terminal output only (no pasting)
+.venv/bin/whisperflow --print-only
+
+# paste test without the mic: focus any text field within 3s
+.venv/bin/whisperflow type "hello from whisperflow"
 
 # transcribe a wav without mic/hotkey (16kHz mono; convert with afconvert)
 .venv/bin/whisperflow transcribe path/to/audio.wav
