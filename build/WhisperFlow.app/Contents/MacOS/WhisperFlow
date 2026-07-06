@@ -6,6 +6,10 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_ROOT="${SCRIPT_DIR:h:h:h:h}"
 WHISPERFLOW="$PROJECT_ROOT/.venv/bin/whisperflow"
 
+# LaunchServices gives apps a minimal PATH; the cleanup pass needs to find
+# the `claude` CLI (homebrew) via shutil.which.
+export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
+
 if [[ ! -x "$WHISPERFLOW" ]]; then
   osascript -e 'display alert "WhisperFlow" message "No virtualenv found. Run: uv venv --python 3.12 && uv pip install -e . in the whisperFlow project." as critical'
   exit 1
