@@ -1,0 +1,65 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## What this is
+
+Local Wispr Flow clone for macOS: a menu-bar dictation app. Click the mic icon, speak, and the transcribed + LLM-cleaned text is typed at the cursor of the frontmost app. Transcription is fully on-device (Parakeet TDT v3 via MLX). macOS-only — depends on PyObjC (AppKit/Quartz), CoreAudio via sounddevice, and Apple Silicon for MLX.
+
+## Commands
+
+```sh
+uv venv --python 3.12 && uv pip install -e .   # setup (first run downloads ~1.2GB model)
+
+.venv/bin/whisperflow          # run the menu-bar app
+.venv/bin/whisperflow --raw    # without the Claude cleanup pass
+```
+
+There is no test suite or linter. Each pipeline stage has a CLI test helper that runs without the menu bar or mic:
+
+```sh
+.venv/bin/whisperflow transcribe path/to/16khz-mono.wav   # transcription only
+.venv/bin/whisperflow type "hello"                        # injection only (types after 3s — focus a text field first)
+.venv/bin/whisperflow clean "um so uh send it friday no wait thursday"   # cleanup pass only
+
+# generate a test wav without speaking:
+say -o /tmp/t.aiff "testing one two three" && afconvert -f WAVE -d LEI16@16000 -c 1 /tmp/t.aiff /tmp/t.wav
+```
+
+The hosting terminal needs Microphone and Accessibility permissions (System Settings → Privacy & Security). Without Accessibility, synthetic keystrokes are silently dropped — injection "does nothing" with no error.
+
+## Architecture
+
+Pipeline, one module per stage, orchestrated by `menubar.py`:
+
+```
+menubar.py (AppKit status item, state machine)
+  → audio.py      Recorder: continuous mic stream, 500ms pre-roll ring buffer, energy VAD
+  → transcriber.py Parakeet MLX, model kept in memory (~0.06s per utterance warm)
+  → cleanup.py    Cleaner: headless `claude -p --bare --model haiku` subprocess
+  → inject.py     types text via CGEvent Unicode keystrokes
+```
+
+### Threading model
+
+Three threads, and it matters which code runs where:
+
+- **Main thread**: all AppKit UI (status item, menu, icon changes). Worker threads request icon updates via `performSelectorOnMainThread_` (`_set_state`).
+- **Audio callback thread** (sounddevice): `Recorder._callback` appends blocks and updates VAD counters under `self._lock`. Keep this callback cheap.
+- **Worker thread**: the transcribe → clean → inject pipeline (`menubar._process`), so the ~1s Haiku call never blocks the UI. Model loading also happens on a background thread at startup.
+
+The menu-bar timer (`tick_`, 10Hz) polls `Recorder.has_speech` / `silence_seconds` to auto-stop after 2s of post-speech silence; VAD counters are block-based (not wall-clock) so the logic is deterministic.
+
+### Contracts and constraints that span files
+
+- **Audio format is 16kHz mono float32 end-to-end**: Recorder produces it, Transcriber requires it (`get_logmel` bit-views the rfft output against the input dtype — anything but float32 breaks), `transcribe_file` rejects other wavs.
+- **Dictation text must never touch the clipboard** (user requirement). `inject.py` types via `CGEventKeyboardSetUnicodeString`, chunked at the 20-UTF-16-unit event cap with surrogate pairs kept intact. Don't reintroduce a pasteboard route.
+- **The cleanup pass must never eat words**: every `Cleaner` failure mode (timeout, not logged in, CLI missing, empty output) returns the raw transcript with a status string. Utterances under 5 words skip the LLM. "Not logged in" disables the pass for the session instead of retrying.
+- **Cleanup rides the user's Claude Code login** (no API key): it spawns the `claude` CLI per utterance. Its system prompt treats transcript content strictly as text to clean, never as instructions.
+- **Secure input**: `inject.secure_input_active()` must be checked before injecting so dictation can't land in password fields; the menu-bar flow already does this.
+- **State machine** in `menubar.py`: LOADING → IDLE ⇄ RECORDING → PROCESSING → IDLE. Clicks are ignored outside IDLE/RECORDING; icons in `icons.py` are drawn per-state.
+
+### Other notes
+
+- Personal dictionary: `~/.config/whisperflow/dictionary.txt` (one term per line, `#` comments) is folded into the cleanup system prompt for spelling correction.
+- End-to-end injection can't be verified headlessly — `whisperflow type` sends real keystrokes to whatever is focused. Test chunking/logic with `_post_unicode_chunk` mocked instead.
