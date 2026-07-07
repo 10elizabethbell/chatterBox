@@ -1,9 +1,11 @@
 """Cleanup pass via headless Claude Code: raw transcript -> polished dictation.
 
-Spawns `claude -p --bare --model haiku` per utterance, so the call rides
+Spawns `claude -p --model haiku` per utterance, so the call rides
 the user's existing Claude Code login (Keychain OAuth) — no API key.
-`--bare` skips hooks/plugins/CLAUDE.md discovery to keep startup lean;
-`--tools ""` strips the tool set since this is a pure text rewrite.
+`--disallowedTools '*'` strips the tool set since this is a pure text rewrite.
+(`--bare` was removed: in current CLI versions it breaks Keychain OAuth in
+headless mode — `claude -p --bare` reports "Not logged in" even when logged
+in, which silently disabled this pass for the whole session.)
 
 Design constraints:
 - Every failure mode falls back to the raw transcript — a dictation app
@@ -89,11 +91,10 @@ class Cleaner:
         cmd = [
             self._claude,
             "-p",
-            "--bare",
             "--model",
             MODEL,
-            "--tools",
-            "",
+            "--disallowedTools",
+            "*",
             "--system-prompt",
             self._system,
             prompt,
@@ -111,7 +112,9 @@ class Cleaner:
             err = (proc.stderr or proc.stdout).strip()
             if "log" in err.lower() and "in" in err.lower():  # "Not logged in"
                 self._disabled = "not logged in — run `claude` and /login"
-                return None, f"cleanup disabled — {self._disabled}"
+                # Keep the CLI's own words in the log: a flag regression (e.g.
+                # `--bare` breaking OAuth) looks identical to a real logout.
+                return None, f"cleanup disabled — {self._disabled} (cli: {err[:80]})"
             return None, f"fallback (claude exited {proc.returncode}: {err[:80]})"
 
         text = proc.stdout.strip()
