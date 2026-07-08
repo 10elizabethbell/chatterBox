@@ -15,6 +15,9 @@ fi
 home=$(sed -n 's/^home = //p' .venv/pyvenv.cfg)
 pyroot=${home%/bin}
 
+# The binary is gitignored; a fresh clone has no Contents/MacOS dir.
+mkdir -p build/ChatterBox.app/Contents/MacOS
+
 clang launcher.c \
   -o build/ChatterBox.app/Contents/MacOS/ChatterBox \
   -L"$pyroot/lib" -lpython3.12 -Wl,-rpath,"$pyroot/lib"

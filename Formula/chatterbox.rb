@@ -17,7 +17,10 @@ class Chatterbox < Formula
     system libexec/"bin/pip", "install", "--quiet", "."
 
     # Rebuild the C launcher to link against homebrew's Python (not uv's).
-    py_lib = Formula["python@3.12"].opt_lib
+    # Homebrew builds Python as a macOS framework: libpython3.12.dylib lives
+    # under Frameworks/, not opt_lib (which only has pkgconfig + stdlib dir).
+    py_lib = Formula["python@3.12"].opt_frameworks/"Python.framework/Versions/3.12/lib"
+    (buildpath/"build/ChatterBox.app/Contents/MacOS").mkpath
     system ENV.cc, "launcher.c",
       "-o", "build/ChatterBox.app/Contents/MacOS/ChatterBox",
       "-L#{py_lib}", "-lpython3.12",
@@ -50,5 +53,10 @@ class Chatterbox < Formula
 
   test do
     system libexec/"bin/python3", "-c", "import chatterbox; print('ok')"
+    # Exercise the compiled launcher via its argv passthrough — this loads
+    # libpython through the rpath and would catch a bad link, which the
+    # venv import above cannot.
+    system opt_prefix/"Applications/ChatterBox.app/Contents/MacOS/ChatterBox",
+           "-c", "import chatterbox; print('ok')"
   end
 end
