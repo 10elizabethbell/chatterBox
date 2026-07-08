@@ -38,12 +38,11 @@ Commands below use `chatterbot` (Homebrew) — replace with `.venv/bin/chatterbo
 ## Usage
 
 ```sh
-# no terminal needed: launch the app itself (mic icon appears in the menu bar);
-# add it to System Settings → Login Items to start automatically at login
+# run headless
 open /opt/homebrew/opt/chatterbot/Applications/ChatterBot.app
 # from a source checkout: open build/ChatterBot.app
 
-# or run it from a terminal (shows the console log)
+# run inside terminal
 chatterbot
 
 # without the Claude cleanup pass

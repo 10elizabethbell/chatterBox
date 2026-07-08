@@ -16,10 +16,18 @@ Design constraints:
   (terminal vs. email vs. Slack).
 - "Not logged in" disables the pass for the session (sticky) with a hint,
   instead of burning the timeout on every utterance.
+- The subprocess must stay a pure text call: it runs in a dedicated empty
+  cwd (otherwise Claude Code scans whatever directory it inherits — with
+  cwd under ~ that trips macOS folder-access prompts for Downloads/Music
+  attributed to ChatterBot), with `--strict-mcp-config` and
+  `--setting-sources ""` so the user's MCP servers and hooks never load
+  (spawned MCP servers are what trigger network prompts), and with
+  nonessential traffic (update checks, telemetry) disabled.
 """
 
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
 import time
@@ -30,6 +38,9 @@ TIMEOUT_SECONDS = 15.0
 SKIP_BELOW_WORDS = 5  # don't bother the LLM with "yes" / "sounds good"
 
 DICTIONARY_PATH = Path.home() / ".config" / "chatterbot" / "dictionary.txt"
+
+# Empty directory the claude subprocess runs in — see the module docstring.
+CLAUDE_CWD = Path.home() / ".config" / "chatterbot" / "claude-cwd"
 
 SYSTEM_PROMPT = """\
 You clean up raw speech-to-text dictation. The user spoke; the transcript may \
@@ -57,6 +68,8 @@ class Cleaner:
         if self._claude is None:
             self._disabled = "claude CLI not found on PATH"
         self._system = SYSTEM_PROMPT.format(dictionary_section=_dictionary_section())
+        self._env = {**os.environ, "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1"}
+        CLAUDE_CWD.mkdir(parents=True, exist_ok=True)
 
     def warm_up(self) -> None:
         """Fire a tiny call at startup: warms the node/OS caches and surfaces
@@ -95,13 +108,21 @@ class Cleaner:
             MODEL,
             "--disallowedTools",
             "*",
+            "--strict-mcp-config",
+            "--setting-sources",
+            "",
             "--system-prompt",
             self._system,
             prompt,
         ]
         try:
             proc = subprocess.run(
-                cmd, capture_output=True, text=True, timeout=TIMEOUT_SECONDS
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=TIMEOUT_SECONDS,
+                cwd=CLAUDE_CWD,
+                env=self._env,
             )
         except subprocess.TimeoutExpired:
             return None, f"fallback (timed out after {TIMEOUT_SECONDS:.0f}s)"
