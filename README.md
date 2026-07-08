@@ -38,7 +38,12 @@ Commands below use `chatterbot` (Homebrew) — replace with `.venv/bin/chatterbo
 ## Usage
 
 ```sh
-# the app: mic icon appears in the menu bar
+# no terminal needed: launch the app itself (mic icon appears in the menu bar);
+# add it to System Settings → Login Items to start automatically at login
+open /opt/homebrew/opt/chatterbot/Applications/ChatterBot.app
+# from a source checkout: open build/ChatterBot.app
+
+# or run it from a terminal (shows the console log)
 chatterbot
 
 # without the Claude cleanup pass
@@ -53,28 +58,10 @@ chatterbot --raw
 - Icon states: hourglass = loading model · mic = idle · filled mic = recording ·
   waveform = transcribing/cleaning
 - If you click by accident and say nothing, it cancels itself after 10s
-
-### Running without a terminal
-
-The install includes a regular Mac app, so nothing needs to stay attached to a
-terminal:
-
-```sh
-open /opt/homebrew/opt/chatterbot/Applications/ChatterBot.app
-# from a source checkout: open build/ChatterBot.app
-```
-
-No Dock icon appears — just the mic in the menu bar. To start it automatically,
-add ChatterBot.app under System Settings → General → Login Items & Extensions →
-"Open at Login".
-
-Two differences from running `chatterbot` in a terminal:
-
-- Permissions attach to ChatterBot.app instead of your terminal — grant it
-  Accessibility manually (typing silently does nothing without it); Microphone
-  prompts on first recording.
-- There's no console output. The icon states still show what it's doing; if
-  something misbehaves, run `chatterbot` from a terminal once to see the log.
+- Launched as the .app there's no Dock icon and no console log, and permissions
+  attach to ChatterBot.app instead of your terminal — grant it Accessibility
+  manually (typing silently does nothing without it); Microphone prompts on
+  first recording
 
 Test helpers (no mic/menu bar needed):
 
