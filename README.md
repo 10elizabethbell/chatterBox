@@ -15,20 +15,31 @@ filler words and fixes formatting.
 ## Setup
 
 ```sh
+brew install ellie/tools/whisperflow
+```
+
+First run downloads the ~1.2GB Parakeet model from HuggingFace.
+
+<details>
+<summary>Build from source</summary>
+
+```sh
+brew install uv
 uv venv --python 3.12
 uv pip install -e .
 ```
 
-First run downloads the ~1.2GB Parakeet model from HuggingFace.
+Commands below use `whisperflow` (Homebrew) — replace with `.venv/bin/whisperflow` if running from source.
+</details>
 
 ## Usage
 
 ```sh
 # the app: mic icon appears in the menu bar
-.venv/bin/whisperflow
+whisperflow
 
 # without the Claude cleanup pass
-.venv/bin/whisperflow --raw
+whisperflow --raw
 ```
 
 - **Click the mic** → recording starts (icon fills in)
@@ -42,16 +53,16 @@ First run downloads the ~1.2GB Parakeet model from HuggingFace.
 Test helpers (no mic/menu bar needed):
 
 ```sh
-.venv/bin/whisperflow transcribe path/to/16khz-mono.wav
-.venv/bin/whisperflow type "hello"     # types after 3s — focus a text field
-.venv/bin/whisperflow clean "um so can you uh send the report by like friday no wait thursday"
+whisperflow transcribe path/to/16khz-mono.wav
+whisperflow type "hello"     # types after 3s — focus a text field
+whisperflow clean "um so can you uh send the report by like friday no wait thursday"
 ```
 
 Quick transcription self-test without speaking:
 
 ```sh
 say -o /tmp/t.aiff "testing one two three" && afconvert -f WAVE -d LEI16@16000 -c 1 /tmp/t.aiff /tmp/t.wav
-.venv/bin/whisperflow transcribe /tmp/t.wav
+whisperflow transcribe /tmp/t.wav
 ```
 
 ## Claude cleanup pass
